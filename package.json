@@ -1,0 +1,25 @@
+{
+  "name": "corpus",
+  "version": "0.1.0",
+  "description": "Tokenized data assets with machine-verified appraisals on X Layer",
+  "main": "index.js",
+  "scripts": {
+    "compile": "node scripts/compile.js",
+    "test": "node scripts/compile.js && mocha test/corpus.test.js",
+    "e2e": "node scripts/compile.js && node deploy/e2e-local.js",
+    "deploy": "node deploy/deploy.js",
+    "mint": "node deploy/mint.js",
+    "post": "node deploy/post-appraisal.js",
+    "appraise": "node appraiser/appraise.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
+    "chai": "^4.5.0",
+    "ethers": "^6.17.0",
+    "mocha": "^10.8.2",
+    "solc": "^0.8.24"
+  }
+}

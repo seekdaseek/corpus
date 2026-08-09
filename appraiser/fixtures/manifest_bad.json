@@ -1,0 +1,37 @@
+{
+  "name": "liq-tape-epoch-bad",
+  "file": "epoch_bad.csv",
+  "schema": [
+    {
+      "name": "ts",
+      "type": "timestamp"
+    },
+    {
+      "name": "event_id",
+      "type": "string"
+    },
+    {
+      "name": "protocol",
+      "type": "string"
+    },
+    {
+      "name": "asset",
+      "type": "string"
+    },
+    {
+      "name": "liq_size_usd",
+      "type": "number"
+    },
+    {
+      "name": "penalty_bps",
+      "type": "number"
+    }
+  ],
+  "expectations": {
+    "minRows": 100,
+    "maxNullPct": 2,
+    "uniqueKey": "event_id",
+    "timestampColumn": "ts",
+    "monotonic": true
+  }
+}
