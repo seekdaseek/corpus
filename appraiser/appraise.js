@@ -12,12 +12,34 @@ function sha256(buf) {
   return "0x" + crypto.createHash("sha256").update(buf).digest("hex");
 }
 
+// RFC4180-style parser: real datasets carry quoted fields with embedded
+// commas and newlines (JSON evidence blobs, timestamps). A naive split on
+// "," silently shifts every column after the first quoted comma, which the
+// schema check cannot catch because the HEADER still matches.
 function parseCSV(text) {
-  const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
-  if (lines.length === 0) return { header: [], rows: [] };
-  const header = lines[0].split(",").map((h) => h.trim());
-  const rows = lines.slice(1).map((l) => l.split(",").map((c) => c.trim()));
-  return { header, rows };
+  const rows = [];
+  let field = "";
+  let row = [];
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += ch;
+      continue;
+    }
+    if (ch === '"') { inQuotes = true; continue; }
+    if (ch === ",") { row.push(field.trim()); field = ""; continue; }
+    if (ch === "\r") continue;
+    if (ch === "\n") { row.push(field.trim()); field = ""; if (row.some((c) => c !== "")) rows.push(row); row = []; continue; }
+    field += ch;
+  }
+  row.push(field.trim());
+  if (row.some((c) => c !== "")) rows.push(row);
+  if (rows.length === 0) return { header: [], rows: [] };
+  return { header: rows[0], rows: rows.slice(1) };
 }
 
 function isNumeric(s) {
@@ -108,6 +130,26 @@ function appraise(manifestPath) {
       if (Number(rows[r][i]) < Number(rows[r - 1][i])) breaks++;
     }
     add("monotonic_time", breaks === 0, `${breaks} ordering breaks in ${exp.timestampColumn}`);
+  }
+
+  // 6b. column ordering invariants (soft). expectations.atLeast = [{col, gteCol}]
+  //     This is what proves a no-lookahead guarantee: a label may only be
+  //     written at or after the moment its window closed.
+  for (const rule of exp.atLeast || []) {
+    const ai = colIdx[rule.col], bi = colIdx[rule.gteCol];
+    if (ai === undefined || bi === undefined) {
+      add(`ordering_${rule.col}_ge_${rule.gteCol}`, false, `missing column ${ai === undefined ? rule.col : rule.gteCol}`);
+      continue;
+    }
+    let violations = 0, compared = 0;
+    for (const r of rows) {
+      const a = Number(r[ai]), b = Number(r[bi]);
+      if (Number.isNaN(a) || Number.isNaN(b)) continue;
+      compared++;
+      if (a < b) violations++;
+    }
+    add(`ordering_${rule.col}_ge_${rule.gteCol}`, violations === 0,
+        `${violations} rows where ${rule.col} < ${rule.gteCol} (of ${compared} compared)`);
   }
 
   // 7. outlier scan on numeric columns (informational, scored lightly)
