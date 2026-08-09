@@ -1,0 +1,60 @@
+{
+  "name": "liq-tape-epoch-2026-08-07",
+  "file": "liq-tape-epoch-2026-08-07.csv",
+  "description": "Cross-venue perpetual-futures liquidation prints (Binance, Bybit, OKX) captured live. This epoch begins strictly after the free CC BY 4.0 snapshot at huggingface.co/datasets/ochinimus/crypto-liquidation-ticks, which ends 2026-08-06 23:59:42 UTC. Bybit allLiquidation is a complete unthrottled stream; Binance and OKX undercount at max one update per symbol per second, worst during cascades. Binance published no archive, so this window cannot be reconstructed after the fact.",
+  "schema": [
+    {
+      "name": "ts_ms",
+      "type": "timestamp"
+    },
+    {
+      "name": "utc_time",
+      "type": "string"
+    },
+    {
+      "name": "symbol",
+      "type": "string"
+    },
+    {
+      "name": "exchange",
+      "type": "string"
+    },
+    {
+      "name": "event",
+      "type": "string"
+    },
+    {
+      "name": "size",
+      "type": "number"
+    },
+    {
+      "name": "price",
+      "type": "number"
+    },
+    {
+      "name": "usd",
+      "type": "number"
+    }
+  ],
+  "expectations": {
+    "minRows": 1000,
+    "maxNullPct": 1,
+    "timestampColumn": "ts_ms",
+    "monotonic": true
+  },
+  "coverage": {
+    "rows": 97601,
+    "first_ms": 1786060800302,
+    "last_ms": 1786233596785,
+    "first_utc": "2026-08-07 00:00:00",
+    "last_utc": "2026-08-08 23:59:56",
+    "symbols": 736,
+    "venues": [
+      "binance",
+      "bybit",
+      "okx"
+    ]
+  },
+  "contentHash": "0x8f2e21678af994a55f3f8a18df9b5da911e43e19848c889bb0cc9bc278a7023f",
+  "license": "commercial use permitted for the licence holder; redistribution not permitted"
+}

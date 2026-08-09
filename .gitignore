@@ -1,3 +1,4 @@
 node_modules/
 .env
 appraiser/reports/
+epochs/*.csv
