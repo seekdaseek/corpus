@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>corpus — tokenized data assets, priced by machine audit</title>
+<meta name="description" content="Each vault holds the hash of a dataset and a quality report written by an appraiser that read every row. Fail the audit and the contract refuses the sale.">
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#11151a; --line:#232a33; --text:#e6edf3;
+    --muted:#8b949e; --dim:#6b7280; --ok:#3fb950; --refuse:#d29922; --accent:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:48px 20px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:36px}
+  h1{font-size:44px;margin:0 0 8px;letter-spacing:-.5px}
+  .tag{color:var(--muted);font-size:17px;margin:0}
+  .sub{color:var(--dim);font-size:14px;margin:10px 0 0}
+  .meta{margin-top:18px;font-size:13px;color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:18px}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .name{font-size:20px;font-weight:600;margin:0}
+  .badge{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .b-ok{color:var(--ok)} .b-no{color:var(--refuse)} .b-off{color:var(--dim)}
+  dl{display:grid;grid-template-columns:150px 1fr;gap:8px 16px;margin:18px 0 0;font-size:14px}
+  dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  button{background:var(--ok);color:#06210d;border:0;border-radius:8px;padding:10px 18px;
+         font-size:14px;font-weight:600;cursor:pointer;margin-top:18px}
+  button:disabled{background:#1d2430;color:var(--dim);cursor:not-allowed}
+  .note{font-size:13px;color:var(--dim);margin-top:12px}
+  .err{color:var(--refuse)}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);
+     margin:44px 0 14px;font-weight:600}
+  p{color:var(--muted)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--text)}
+  footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>corpus</h1>
+    <p class="tag">Tokenized data assets, priced by machine audit.</p>
+    <p class="sub">Each vault is an ERC-721 holding the sha256 of a dataset and a quality report written by an appraiser that read every row. Schema, completeness, duplicates, ordering, outliers. Fail the audit and the contract refuses the sale — not a low score, refused.</p>
+    <div class="meta" id="chain">reading chain…</div>
+  </header>
+
+  <h2>Vaults</h2>
+  <div id="vaults"><p>Loading…</p></div>
+
+  <h2>How a purchase works</h2>
+  <p>Buy a licence by calling <code>buyLicense(vaultId)</code> on the contract with the exact price. The licence is time-boxed and recorded onchain against your address. To collect the data, this page asks you to sign a one-time challenge; the server recovers your address from that signature and asks the contract <code>hasAccess(vaultId, address)</code>. No account, no API key, nothing to leak. The file it returns hashes to exactly the value the vault committed to — verify it yourself with <code>shasum -a 256</code>.</p>
+
+  <h2>What this is not, yet</h2>
+  <p>The appraiser is a single service holding <code>APPRAISER_ROLE</code>. The path out is a challenge mechanism: stake-backed re-appraisals that slash on divergence. Delivery is a licensed download verified by content hash, so privacy-sensitive datasets are out of scope until compute-to-data exists. Saying so here rather than in a footnote is deliberate.</p>
+
+  <footer>
+    Contract and appraiser source: <a href="https://github.com/seekdaseek/corpus">github.com/seekdaseek/corpus</a> · <a href="https://x.com/corpusvault">@corpusvault</a>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const short = (h) => h ? h.slice(0, 10) + "\u2026" + h.slice(-6) : "";
+
+async function load() {
+  let data;
+  try {
+    data = await (await fetch("/api/vaults")).json();
+  } catch (e) {
+    $("#vaults").innerHTML = '<p class="err">Could not reach the chain.</p>';
+    return;
+  }
+  $("#chain").textContent = "contract " + data.contract;
+  if (!data.vaults || !data.vaults.length) {
+    $("#vaults").innerHTML = "<p>No vaults yet.</p>";
+    return;
+  }
+  $("#vaults").innerHTML = data.vaults.map(render).join("");
+  data.vaults.forEach(function (v) {
+    const b = document.querySelector('[data-get="' + v.id + '"]');
+    if (b) b.addEventListener("click", function () { download(v.id, b); });
+  });
+}
+
+function render(v) {
+  const badge = !v.appraised
+    ? '<span class="badge b-off">not appraised</span>'
+    : v.refusal
+      ? '<span class="badge b-no">appraisal refused &mdash; sale blocked</span>'
+      : '<span class="badge b-ok">audited ' + (v.scoreBps / 100).toFixed(1) + '%</span>';
+  const price = (Number(v.priceWei) / 1e18).toString();
+  return '' +
+  '<div class="card">' +
+    '<div class="row"><h3 class="name">Vault ' + v.id + '</h3>' + badge + '</div>' +
+    '<dl>' +
+      '<dt>content sha256</dt><dd>' + short(v.contentHash) + '</dd>' +
+      '<dt>manifest</dt><dd><a href="' + v.manifestURI + '" rel="noopener">' + v.manifestURI + '</a></dd>' +
+      '<dt>price</dt><dd>' + price + ' native &middot; ' + v.licenseDays + ' day licence</dd>' +
+      '<dt>report</dt><dd><a href="/api/vaults/' + v.id + '/report">signed appraisal report</a></dd>' +
+      '<dt>owner</dt><dd>' + short(v.owner) + '</dd>' +
+    '</dl>' +
+    (v.refusal ? '<p class="note">This vault failed hard QA. The contract rejects any purchase attempt until a corrected epoch is appraised.</p>' : '') +
+    '<button data-get="' + v.id + '">I hold a licence &mdash; download</button>' +
+    '<p class="note" id="s' + v.id + '"></p>' +
+  '</div>';
+}
+
+async function download(id, btn) {
+  const status = $("#s" + id);
+  if (!window.ethereum) { status.innerHTML = '<span class="err">No wallet detected in this browser.</span>'; return; }
+  btn.disabled = true;
+  status.textContent = "Requesting challenge\u2026";
+  try {
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    const addr = accounts[0];
+    const ch = await (await fetch("/api/challenge?vaultId=" + id)).json();
+    status.textContent = "Sign the challenge in your wallet\u2026";
+    const signature = await window.ethereum.request({ method: "personal_sign", params: [ch.message, addr] });
+    status.textContent = "Checking your licence onchain\u2026";
+    const res = await fetch("/api/download", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ vaultId: id, nonce: ch.nonce, signature: signature }),
+    });
+    if (res.status === 402) {
+      status.innerHTML = '<span class="err">No active licence for ' + short(addr) + '. Buy one first.</span>';
+      btn.disabled = false; return;
+    }
+    if (!res.ok) {
+      const j = await res.json().catch(function () { return {}; });
+      status.innerHTML = '<span class="err">' + (j.error || res.status) + '</span>';
+      btn.disabled = false; return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const cd = res.headers.get("content-disposition") || "";
+    const m = cd.split("filename=")[1];
+    a.download = m ? m.replace(/"/g, "") : ("vault-" + id + ".csv");
+    a.click();
+    URL.revokeObjectURL(url);
+    status.textContent = "Delivered. Verify with shasum -a 256 against the hash above.";
+  } catch (e) {
+    status.innerHTML = '<span class="err">' + (e.message || "failed") + '</span>';
+    btn.disabled = false;
+  }
+}
+load();
+</script>
+</body>
+</html>

@@ -12,7 +12,11 @@
     "post": "node deploy/post-appraisal.js",
     "appraise": "node appraiser/appraise.js",
     "finish": "node deploy/finish-setup.js",
-    "verify": "node deploy/verify-role.js"
+    "handover": "node deploy/handover.js",
+    "test:handover": "node scripts/compile.js && node deploy/test-handover.js",
+    "verify": "node deploy/verify-role.js",
+    "gateway": "node gateway/server.js",
+    "test:gateway": "node scripts/compile.js && node gateway/test-gateway.js"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +25,7 @@
     "@openzeppelin/contracts": "^5.0.2",
     "chai": "^4.5.0",
     "ethers": "^6.17.0",
+    "express": "^4.22.2",
     "mocha": "^10.8.2",
     "solc": "^0.8.24"
   }
