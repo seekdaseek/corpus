@@ -58,6 +58,25 @@ def main():
         dist.setdefault(r["horizon_days"], {}).setdefault(r["label"], 0)
         dist[r["horizon_days"]][r["label"]] += 1
 
+    # Drop columns that are entirely empty rather than shipping dead weight.
+    # A buyer paying for this should not receive a column that never holds a
+    # value; the manifest records which were excluded and why.
+    def value_of(r, col):
+        if col == "window_close_ts":
+            return int(r["t0_ts"]) + int(r["horizon_days"]) * 86400
+        return r[col]
+
+    live_columns = []
+    excluded = []
+    for c in COLUMNS:
+        has_value = any(
+            value_of(r, c) is not None and str(value_of(r, c)).strip() != ""
+            for r in rows
+        )
+        (live_columns if has_value else excluded).append(c)
+    if excluded:
+        print(f"excluding {len(excluded)} always-empty column(s): {', '.join(excluded)}")
+
     os.makedirs(args.out, exist_ok=True)
     name = args.name or f"launch-outcomes-{'-'.join(str(h) + 'd' for h in horizons)}"
     csv_path = os.path.join(args.out, f"{name}.csv")
@@ -67,15 +86,9 @@ def main():
 
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh, quoting=csv.QUOTE_MINIMAL)
-        w.writerow(COLUMNS)
+        w.writerow(live_columns)
         for r in rows:
-            close = int(r["t0_ts"]) + int(r["horizon_days"]) * 86400
-            w.writerow([
-                r["pool_address"], r["symbol"], r["dex"], r["quote_mint"],
-                r["t0_ts"], r["t0_liquidity_usd"], r["t0_volume24h_usd"], r["t0_price_usd"],
-                r["t0_fdv_usd"], r["t0_txns24h"], r["cohort_ts"], r["cohort_reason"],
-                r["horizon_days"], close, r["labeled_ts"], r["label"], r["evidence"],
-            ])
+            w.writerow([value_of(r, c) for c in live_columns])
 
     h = hashlib.sha256()
     with open(csv_path, "rb") as fh:
@@ -84,7 +97,7 @@ def main():
     digest = "0x" + h.hexdigest()
 
     schema = []
-    for c in COLUMNS:
+    for c in live_columns:
         if c in ("t0_ts", "cohort_ts", "window_close_ts", "labeled_ts"):
             schema.append({"name": c, "type": "timestamp"})
         elif c.endswith("_usd") or c in ("t0_txns24h", "horizon_days"):
@@ -121,6 +134,7 @@ def main():
             "first_t0_ts": first_t0,
             "last_labeled_ts": last_lab,
             "label_distribution": dist,
+            "excluded_empty_columns": excluded,
         },
         "contentHash": digest,
         "license": "commercial use permitted for the licence holder; redistribution not permitted",

@@ -1,0 +1,115 @@
+{
+  "name": "launch-outcomes-1d-7d",
+  "file": "launch-outcomes-1d-7d.csv",
+  "description": "Solana launch-to-outcome labeled dataset. One row per pool and horizon: the features recorded at discovery joined to the outcome label written after that horizon closed. Labels are mechanical and auditable (active, liquidity_collapsed, lp_removed, inactive, unresolvable, unknown), never an intent claim, and each carries a JSON evidence blob with the numbers and the rule that fired. Only pools crossing a traction gate are followed, so this is the cohort a buyer cares about rather than the dead-on-arrival majority. NO LOOKAHEAD: a label at horizon H may only read observations at or before t0+H, and the export carries window_close_ts so an appraiser can verify labeled_ts >= window_close_ts on every row rather than taking the claim on trust.",
+  "schema": [
+    {
+      "name": "pool_address",
+      "type": "string"
+    },
+    {
+      "name": "symbol",
+      "type": "string"
+    },
+    {
+      "name": "dex",
+      "type": "string"
+    },
+    {
+      "name": "quote_mint",
+      "type": "string"
+    },
+    {
+      "name": "t0_ts",
+      "type": "timestamp"
+    },
+    {
+      "name": "t0_liquidity_usd",
+      "type": "number"
+    },
+    {
+      "name": "t0_volume24h_usd",
+      "type": "number"
+    },
+    {
+      "name": "t0_price_usd",
+      "type": "number"
+    },
+    {
+      "name": "t0_fdv_usd",
+      "type": "number"
+    },
+    {
+      "name": "t0_txns24h",
+      "type": "number"
+    },
+    {
+      "name": "cohort_ts",
+      "type": "timestamp"
+    },
+    {
+      "name": "cohort_reason",
+      "type": "string"
+    },
+    {
+      "name": "horizon_days",
+      "type": "number"
+    },
+    {
+      "name": "window_close_ts",
+      "type": "timestamp"
+    },
+    {
+      "name": "labeled_ts",
+      "type": "timestamp"
+    },
+    {
+      "name": "label",
+      "type": "string"
+    },
+    {
+      "name": "evidence",
+      "type": "string"
+    }
+  ],
+  "expectations": {
+    "minRows": 500,
+    "maxNullPct": 35,
+    "timestampColumn": "t0_ts",
+    "monotonic": true,
+    "atLeast": [
+      {
+        "col": "labeled_ts",
+        "gteCol": "window_close_ts"
+      }
+    ]
+  },
+  "coverage": {
+    "rows": 74802,
+    "pools": 44793,
+    "horizons_days": [
+      1,
+      7
+    ],
+    "first_t0_ts": 1784736939,
+    "last_labeled_ts": 1786301235,
+    "label_distribution": {
+      "1": {
+        "unknown": 4946,
+        "active": 26972,
+        "liquidity_collapsed": 2325,
+        "lp_removed": 10224,
+        "inactive": 326
+      },
+      "7": {
+        "inactive": 20431,
+        "liquidity_collapsed": 1776,
+        "lp_removed": 7633,
+        "unknown": 95,
+        "active": 74
+      }
+    }
+  },
+  "contentHash": "0x0c8c8c960403a92a7c9fb0622f7104f2de87a852af554cc1e86bd041f355bdba",
+  "license": "commercial use permitted for the licence holder; redistribution not permitted"
+}

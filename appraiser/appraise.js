@@ -93,12 +93,20 @@ function appraise(manifestPath) {
 
   // 3. null rate per column (soft, scored)
   const maxNullPct = exp.maxNullPct ?? 5;
-  let worstNull = 0;
+  let worstNull = 0, worstCol = header[0];
+  const offenders = [];
   for (const h of header) {
     const nulls = rows.filter((r) => r[colIdx[h]] === "" || r[colIdx[h]] === undefined).length;
-    worstNull = Math.max(worstNull, (100 * nulls) / rows.length);
+    const pct = (100 * nulls) / rows.length;
+    if (pct > worstNull) { worstNull = pct; worstCol = h; }
+    if (pct > maxNullPct) offenders.push(`${h} ${pct.toFixed(2)}%`);
   }
-  add("null_rate", worstNull <= maxNullPct, `worst column ${worstNull.toFixed(2)}% empty (max ${maxNullPct}%)`);
+  // Name the columns. "worst column 100% empty" without saying which one is
+  // not a finding a buyer can act on.
+  add("null_rate", worstNull <= maxNullPct,
+      offenders.length
+        ? `over threshold (${maxNullPct}%): ${offenders.join(", ")}`
+        : `worst is ${worstCol} at ${worstNull.toFixed(2)}% empty (max ${maxNullPct}%)`);
 
   // 4. duplicate keys (soft)
   if (exp.uniqueKey && colIdx[exp.uniqueKey] !== undefined) {
