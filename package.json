@@ -16,7 +16,8 @@
     "test:handover": "node scripts/compile.js && node deploy/test-handover.js",
     "verify": "node deploy/verify-role.js",
     "gateway": "node gateway/server.js",
-    "test:gateway": "node scripts/compile.js && node gateway/test-gateway.js"
+    "test:gateway": "node scripts/compile.js && node gateway/test-gateway.js",
+    "collect": "node deploy/buy-and-collect.js"
   },
   "keywords": [],
   "author": "",
