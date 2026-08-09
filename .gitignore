@@ -3,3 +3,4 @@ node_modules/
 appraiser/reports/
 collected/
 epochs/*.csv
+epochs/
