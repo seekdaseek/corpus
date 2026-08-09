@@ -17,6 +17,7 @@ scripts/compile.js             solc-js (wasm), evmVersion paris, optimizer 200
 deploy/deploy.js               deploy + grant APPRAISER_ROLE
 deploy/mint.js                 hash the artifact, create the vault
 deploy/post-appraisal.js       run QA, sign, post score/refusal onchain
+deploy/finish-setup.js         idempotent post-deploy: waits out RPC lag, grants appraiser role
 deploy/e2e-local.js            full-flow smoke against a throwaway anvil
 test/corpus.test.js            21 tests: engine + contract, selector-exact reverts
 ```
@@ -47,6 +48,7 @@ Deploy to testnet:
 cp .env.example .env       # fill RPC_URL and PRIVATE_KEY (never commit .env)
 set -a; . ./.env; set +a
 npm run deploy             # prints CONTRACT=0x...  -> put it in .env
+npm run finish             # grants APPRAISER_ROLE; safe to re-run
 npm run mint -- appraiser/fixtures/manifest_good.json 0.05 7 https://your.host/manifest_good.json
 npm run post -- 1 appraiser/fixtures/manifest_good.json
 ```
@@ -66,6 +68,10 @@ An LLM can be plugged in to write the narrative section of the report; it never 
 ## Known limitations (v1)
 
 The appraiser is a centralized service holding APPRAISER_ROLE. The path out is a challenge mechanism: stake-backed re-appraisals with slashing on divergence. Delivery is raw licensed download verified by content hash — no compute-to-data, so privacy-sensitive datasets are out of scope for v1. No sub-license token economics.
+
+## RPC lag
+
+Public X Layer RPCs are load-balanced. A read issued immediately after a deploy can hit a replica that has not indexed the block yet and comes back as empty data ("could not decode result data") even though the deploy receipt succeeded. `npm run deploy` polls until the endpoint serves the contract code; if it never does, it prints the address and tells you to run `npm run finish` later. `finish-setup.js` is idempotent, retries reads, falls back to `RPC_URL_ALT`, and falls back to the computed keccak256("APPRAISER_ROLE") constant if the getter itself will not read. Nothing is lost by a lagged deploy.
 
 ## Engineering notes
 

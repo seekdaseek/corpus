@@ -10,7 +10,9 @@
     "deploy": "node deploy/deploy.js",
     "mint": "node deploy/mint.js",
     "post": "node deploy/post-appraisal.js",
-    "appraise": "node appraiser/appraise.js"
+    "appraise": "node appraiser/appraise.js",
+    "finish": "node deploy/finish-setup.js",
+    "verify": "node deploy/verify-role.js"
   },
   "keywords": [],
   "author": "",

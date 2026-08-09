@@ -38,7 +38,35 @@ async function main() {
   const addr = await c.getAddress();
   console.log(`deployed CorpusVault at ${addr} (treasury ${treasury}, fee ${feeBps} bps)`);
 
-  const role = await c.APPRAISER_ROLE();
+  // Public RPCs are load-balanced: a read immediately after deploy can hit a
+  // replica that has not indexed the block yet and return empty data. Wait for
+  // code to be served before touching the contract.
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let served = false;
+  for (let i = 0; i < 40; i++) {
+    try {
+      const code = await provider.getCode(addr);
+      if (code && code !== "0x") { served = true; break; }
+    } catch {}
+    await sleep(3000);
+  }
+  if (!served) {
+    console.log(`CONTRACT=${addr}`);
+    console.error("deployed, but this RPC is not yet serving the contract code.");
+    console.error(`Put CONTRACT=${addr} in .env and run: npm run finish`);
+    process.exit(2);
+  }
+
+  let role = null;
+  for (let i = 0; i < 5; i++) {
+    try { role = await c.APPRAISER_ROLE(); break; } catch { await sleep(2000); }
+  }
+  if (!role) {
+    console.log(`CONTRACT=${addr}`);
+    console.error("deployed, but role read failed on this RPC.");
+    console.error(`Put CONTRACT=${addr} in .env and run: npm run finish`);
+    process.exit(2);
+  }
   const tx = await c.grantRole(role, appraiser);
   await tx.wait();
   console.log(`granted APPRAISER_ROLE to ${appraiser}`);
