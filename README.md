@@ -4,6 +4,27 @@ Tokenized data assets with machine-verified appraisals, on X Layer.
 
 Each vault is an ERC-721 representing one dataset epoch. An appraiser runs automated QA over the actual bytes (schema, row count, null rate, duplicate keys, type conformance, timestamp ordering, outlier scan), produces a signed report, and posts the verdict onchain. Purchases are hard-gated: no appraisal, or an appraisal in refusal state, means the license cannot be bought. Buyers pay in the native token for a time-boxed access license; revenue splits between the creator and the protocol treasury using pull payments.
 
+
+## Live on X Layer mainnet
+
+Contract `0x7bCA69e17567A2D5DC07eBF69832902A79664648`, chain 196.
+Gateway and vault browser: https://corpus.ochinimus.app
+
+Two vaults are live, both holding production data from collectors that have been running for weeks.
+
+Vault 1, `liq-tape-epoch-2026-08-07`. 97,601 liquidation events across Binance, Bybit and OKX. 0.02 OKB for 30 days. Appraisal score 10000, no refusal.
+
+Vault 2, `launch-outcomes-1d-7d`. 74,802 labeled outcomes across 44,793 Solana liquidity pools at 1-day and 7-day horizons. 0.05 OKB for 90 days. Appraisal score 10000, no refusal.
+
+Vault 2 carries the result worth singling out. The appraiser compares every label against its own observation window close, and found zero rows where a label was written before that window shut, across all 74,802. The no-lookahead property of the dataset is machine-verified rather than asserted.
+
+Delivery is hash-gated end to end. The gateway locates a file by hashing candidates and matching the content hash the contract stores, so it cannot serve bytes the vault never committed to. The full buy-and-collect path has been run on live chain against both vaults, each run ending in a byte-for-byte hash match.
+
+Admin rights and both vault NFTs are held by `0x22DB3A9686EE5261e7Bf3ed4f91277232E8076e6`, a wallet whose key has never been on the build machine. The original deploy key has renounced both its admin and appraiser roles.
+
+## License
+
+MIT. See LICENSE.
 The difference from stake-weighted curation (Ocean-style): the quality signal here is a machine audit of the data itself, not token-holder opinion. A corrupted epoch does not get a low score and stay purchasable — it gets refused, and the contract blocks the sale.
 
 ## Layout
