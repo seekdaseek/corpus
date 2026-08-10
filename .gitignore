@@ -4,3 +4,4 @@ appraiser/reports/
 collected/
 epochs/*.csv
 epochs/
+.env*

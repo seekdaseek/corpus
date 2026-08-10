@@ -128,12 +128,19 @@ app.get("/api/vaults/:id", async (req, res) => {
 
 // The signed appraisal report, served verbatim so a buyer can check the
 // signature and the report hash against what is onchain.
-app.get("/api/vaults/:id/report", (req, res) => {
+app.get("/api/vaults/:id/report", async (req, res) => {
   const dir = path.join(__dirname, "..", "appraiser", "reports");
-  if (!fs.existsSync(dir)) return res.status(404).json({ error: "no reports on this host" });
-  const matches = fs.readdirSync(dir).filter((f) => f.startsWith(`vault-${req.params.id}-`)).sort();
-  if (!matches.length) return res.status(404).json({ error: "no report for that vault" });
-  res.type("application/json").send(fs.readFileSync(path.join(dir, matches[matches.length - 1]), "utf8"));
+  if (fs.existsSync(dir) === false) return res.status(404).json({ error: "no reports on this host" });
+  let onchain;
+  try { onchain = await vault.vaults(req.params.id); } catch { return res.status(404).json({ error: "unknown vault" }); }
+  const want = String(onchain.contentHash).toLowerCase();
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    let j;
+    try { j = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")); } catch { continue; }
+    const got = String((j.report || j).contentHash || "").toLowerCase();
+    if (got === want) return res.type("application/json").send(fs.readFileSync(path.join(dir, f), "utf8"));
+  }
+  return res.status(404).json({ error: "contentHash does not match this vault on chain" });
 });
 
 app.get("/api/challenge", (req, res) => {
